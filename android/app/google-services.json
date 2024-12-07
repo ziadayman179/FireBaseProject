@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "255092478696",
+    "project_id": "cloud-bc58f",
+    "storage_bucket": "cloud-bc58f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:255092478696:android:3e15194f65a0acfc676f5d",
+        "android_client_info": {
+          "package_name": "com.android.zby"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBA0-0zT89bGf-T2Sn9IgyJMAHiWPOvAxs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:255092478696:android:3b1d36cacb09f4da676f5d",
+        "android_client_info": {
+          "package_name": "com.example.untitled"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBA0-0zT89bGf-T2Sn9IgyJMAHiWPOvAxs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
