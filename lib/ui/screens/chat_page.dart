@@ -1,9 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:untitled/model/chat_message.dart'; // For ChatMessage class
-import 'package:untitled/services/firebase_service.dart'; // For FirebaseService class
-
+import 'package:untitled/services/firebase_service.dart';
+import 'package:untitled/services/userServices.dart';
 
 class ChatPage extends StatefulWidget {
   final String channelId;
@@ -17,57 +15,41 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final FirebaseService _firebaseService = FirebaseService();
   final TextEditingController _controller = TextEditingController();
-  List<ChatMessage> _messages = [];
+  List<Map<String, dynamic>> _messages = [];
 
   @override
   void initState() {
     super.initState();
-    _firebaseService.getMessages(widget.channelId).listen((messages) {
-      setState(() {
-        _messages = messages;
-      });
+    _loadUserName();
+    _listenForMessages();
+  }
+
+  Future<void> _loadUserName() async {
+    String? userName = await UserServices.getUserName();
+    setState(() {
     });
   }
 
-  void _sendMessage() async {
-    if (_controller.text.isNotEmpty) {
-      try {
-        String? token = await FirebaseMessaging.instance.getToken();
-        if (token == null) {
-          print('Error: Unable to retrieve FCM token');
-          return;
-        }
+  void _listenForMessages() {
+    _firebaseService.getMessages(widget.channelId);
+    DatabaseReference messageRef = FirebaseDatabase.instance.ref('channels/${widget.channelId}/messages');
 
-        final userDocSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('token', isEqualTo: token)
-            .limit(1)
-            .get();
-
-        if (userDocSnapshot.docs.isNotEmpty) {
-          final userDoc = userDocSnapshot.docs.first;
-          final userId = userDoc.data()['user_id'];
-
-          final newMessage = ChatMessage(
-            senderId: userId,
-            message: _controller.text,
-            timestamp: DateTime.now().millisecondsSinceEpoch,
-          );
-
-          await _firebaseService.sendMessage(widget.channelId, newMessage);
-
-          _controller.clear();
-        } else {
-          print('No user found for this token.');
-        }
-      } catch (error) {
-        print('Failed to send message: $error');
+    messageRef.onChildAdded.listen((event) {
+      if (event.snapshot.value != null) {
+        final newMessage = Map<String, dynamic>.from(
+            event.snapshot.value as Map<dynamic, dynamic>);
+        setState(() {
+          _messages.add(newMessage);
+        });
       }
-    }
+    });
   }
 
-
-
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,9 +65,15 @@ class _ChatPageState extends State<ChatPage> {
               itemBuilder: (context, index) {
                 final message = _messages[index];
                 return ListTile(
-                  title: Text(message.senderId),
-                  subtitle: Text(message.message),
-                  trailing: Text(DateTime.fromMillisecondsSinceEpoch(message.timestamp).toLocal().toString()),
+                  title: Text(
+                    message['userName'] ?? 'Anonymous',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(message['message'] ?? ''),
+                  trailing: Text(
+                    _formatTimestamp(message['timestamp']),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 );
               },
             ),
@@ -104,7 +92,16 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  onPressed: () async {
+                    final text = _controller.text.trim();
+                    if (text.isNotEmpty) {
+                      await _firebaseService.sendMessage(
+                          widget.channelId,
+                          text
+                      );
+                      _controller.clear();
+                    }
+                  },
                 ),
               ],
             ),
@@ -112,5 +109,14 @@ class _ChatPageState extends State<ChatPage> {
         ],
       ),
     );
+  }
+
+  String _formatTimestamp(String timestamp) {
+    try {
+      final dateTime = DateTime.parse(timestamp).toLocal();
+      return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return 'Invalid time';
+    }
   }
 }

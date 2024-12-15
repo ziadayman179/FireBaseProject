@@ -2,12 +2,58 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:untitled/model/notification_channel.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:untitled/model/chat_message.dart';
+import 'package:untitled/services/userServices.dart';
 
+import '../model/UserModel.dart';
+import 'AnalyticsService.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final DatabaseReference _database = FirebaseDatabase.instance.ref();
+  Future<void> addChannelRealtimeDatabase(NotificationChannel channel) async {
+    try {
+      final databaseReference = FirebaseDatabase.instance.ref();
+      await databaseReference.child('channels/${channel.id}').set({
+        'name': channel.name,
+        'createdAt': ServerValue.timestamp,
+      });
+      print('Channel ${channel.id} added to Realtime Database');
+    } catch (e) {
+      print('Error adding channel: $e');
+    }
+  }
+  Future<void> removeChannelRealtimeDatabase(String channelId) async {
+    try {
+      final databaseReference = FirebaseDatabase.instance.ref();
+      await databaseReference.child('channels/$channelId').remove();
+      print('Channel $channelId removed from Realtime Database');
+    } catch (e) {
+      print('Error removing channel: $e');
+    }
+  }
+  Future<UserModel?> getUserById(String userId) async {
+    try {
+      // Reference to the user node in the Realtime Database
+      final DatabaseReference userRef = FirebaseDatabase.instance.ref('users/$userId');
+
+      // Fetch the user data
+      final DataSnapshot snapshot = await userRef.get();
+
+      if (snapshot.exists && snapshot.value != null) {
+        // Convert the snapshot value to a Map<String, dynamic>
+        final userData = Map<String, dynamic>.from(snapshot.value as Map);
+
+        // Map the data to UserModel
+        return UserModel.fromMap(userData);
+      } else {
+        print("No user found with ID: $userId");
+        return null;
+      }
+    } catch (e) {
+      print("Error fetching user with ID $userId: $e");
+      return null;
+    }
+  }
+
 
   Future<void> addChannel(NotificationChannel channel) async {
     try {
@@ -20,8 +66,34 @@ class FirebaseService {
 
   Future<void> removeChannel(String channelId) async {
     try {
-      await FirebaseFirestore.instance.collection('channels').doc(channelId).delete();
-      print("Channel removed successfully");
+      // Remove the channel from 'channels' collection
+      final channelQuery = await FirebaseFirestore.instance
+          .collection('channels')
+          .where('id', isEqualTo: channelId)
+          .limit(1)
+          .get();
+
+      if (channelQuery.docs.isNotEmpty) {
+        await channelQuery.docs.first.reference.delete();
+        print("Channel removed successfully");
+      } else {
+        print("No channel found with the given id");
+      }
+
+      // Remove the channel references from 'topics' collection
+      final topicsQuery = await FirebaseFirestore.instance
+          .collection('topics')
+          .where('channels', arrayContains: channelId)
+          .get();
+
+      for (var topicDoc in topicsQuery.docs) {
+        await topicDoc.reference.update({
+          'channels': FieldValue.arrayRemove([channelId])
+        });
+        print("Channel removed from topic: ${topicDoc.id}");
+      }
+
+      print("Channel removal process completed successfully.");
     } catch (e) {
       print("Error removing channel: $e");
     }
@@ -39,50 +111,15 @@ class FirebaseService {
       return [];
     }
   }
-
-  Future<List<NotificationChannel>> getSubscribedChannels(List<String> channelIds) async {
-    List<NotificationChannel> channels = [];
-    for (String channelId in channelIds) {
-      final channelSnapshot = await FirebaseFirestore.instance.collection('channels').doc(channelId).get();
-      if (channelSnapshot.exists) {
-        channels.add(NotificationChannel.fromMap(channelSnapshot.data() as Map<String, dynamic>));
-      }
-    }
-    return channels;
-  }
-
   Future<void> addOrUpdateSubscription(String channelId) async {
-    try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        print('Error: Unable to retrieve FCM token');
-        return;
-      }
-
-      CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
-
-      QuerySnapshot userSnapshot =
-      await usersRef.where('token', isEqualTo: token).limit(1).get();
-
-      if (userSnapshot.docs.isNotEmpty) {
-        DocumentReference userDoc = userSnapshot.docs.first.reference;
-        await userDoc.update({
-          'subscriptions.$channelId': true,
-        });
-        print('Subscription updated for existing user');
-      } else {
-        await usersRef.add({
-          'token': token,
-          'subscriptions': {
-            channelId: true,
-          },
-          'user_id': 'user_${Timestamp.now().millisecondsSinceEpoch}',
-        });
-        print('New user created and subscription added');
-      }
-    } catch (e) {
-      print('Error adding or updating subscription: $e');
-    }
+    String? userId = await UserServices.getUserId();
+    DatabaseReference userRef = FirebaseDatabase.instance.ref('subscriptions/users/$userId');
+    await userRef.update({
+      channelId: true,
+    });
+    await FirebaseMessaging.instance.subscribeToTopic(channelId);
+    final analyticsService =AnalyticsService();
+    analyticsService.subscribeToChannel(channelId, userId!);
   }
 
   static Future<void> foregroundNotificationHandler(RemoteMessage message) async {
@@ -119,65 +156,43 @@ class FirebaseService {
     return FirebaseMessaging.onMessage;
   }
 
-  Future<void> removeSubscription(String channelId) async {
-    try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        print('Error: Unable to retrieve FCM token');
-        return;
-      }
-
-      CollectionReference usersRef = FirebaseFirestore.instance.collection('users');
-
-      QuerySnapshot userSnapshot =
-      await usersRef.where('token', isEqualTo: token).limit(1).get();
-
-      if (userSnapshot.docs.isNotEmpty) {
-        DocumentReference userDoc = userSnapshot.docs.first.reference;
-
-        await userDoc.update({
-          'subscriptions.$channelId': FieldValue.delete(), // Remove the subscription
-        });
-
-        print('Subscription removed for user');
-      } else {
-        print('No user found with the given token');
-      }
-    } catch (e) {
-      print('Error removing subscription: $e');
-    }
+  Future<void> unsubscribeFromChannelRealTimeDB(String channel) async {
+      String? uid = await UserServices.getUserId();
+      DatabaseReference userRef = FirebaseDatabase.instance.ref('subscriptions/users/$uid');
+      userRef.child(channel).remove();
+      await FirebaseMessaging.instance.unsubscribeFromTopic(channel);
+      final analyticsService =AnalyticsService();
+      analyticsService.unsubscribe(channel, uid!);
   }
 
   Future<List<String>> getUserSubscriptions() async {
     try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        print('Error: Unable to retrieve FCM token');
+      // Retrieve the current user's ID
+      String? userId = await UserServices.getUserId();
+
+      if (userId == null) {
+        print('Error: Unable to retrieve user ID');
         return [];
       }
+      DatabaseReference subRef =
+      FirebaseDatabase.instance.ref("subscriptions/users/$userId");
+      final DataSnapshot snapshot = await subRef.get();
+      if (snapshot.exists && snapshot.value != null) {
+        // Parse the snapshot data into a list of subscriptions
+        final List<String> subscriptions =
+        List<String>.from((snapshot.value as Map).keys);
 
-      QuerySnapshot userSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('token', isEqualTo: token)
-          .limit(1)
-          .get();
-
-      if (userSnapshot.docs.isNotEmpty) {
-        DocumentSnapshot userDoc = userSnapshot.docs.first;
-
-        Map<String, dynamic> subscriptions = userDoc['subscriptions'] ?? {};
-        List<String> subscribedChannelIds = subscriptions.keys.toList();
-        return subscribedChannelIds;
+        print("User subscriptions: $subscriptions");
+        return subscriptions;
       } else {
-        print('No user found with the given token');
+        print("No subscriptions found for the user.");
         return [];
       }
     } catch (e) {
-      print('Error fetching user subscriptions: $e');
+      print("Error fetching user subscriptions: $e");
       return [];
     }
   }
-
   Future<NotificationChannel?> getChannelById(String channelId) async {
     try {
       print("Fetching channel with ID: $channelId");
@@ -206,59 +221,41 @@ class FirebaseService {
     }
   }
 
-  Future<void> sendMessage(String channelId, ChatMessage message) async {
+  Future<void> sendMessage(String channelId, String message) async {
     try {
-      String? token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        print('Error: Unable to retrieve FCM token');
+      final userId = await UserServices.getUserId();
+      final userName = await UserServices.getUserName();
+
+      if (userId == null) {
+        print('Error: Could not retrieve user ID for message.');
         return;
       }
 
-      final userDocSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('token', isEqualTo: token)
-          .limit(1)
-          .get();
-
-      if (userDocSnapshot.docs.isNotEmpty) {
-        final userDoc = userDocSnapshot.docs.first;
-        final userId = userDoc.data()['user_id'];
-
-        final newMessage = ChatMessage(
-          senderId: userId,
-          message: message.message,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-        );
-
-        final messageRef = _database.child('channels/$channelId/messages').push();
-        await messageRef.set(newMessage.toMap());
-      } else {
-        print('No user found for this token.');
-      }
+      final messageRef = FirebaseDatabase.instance.ref('channels/$channelId/messages').push();
+      final timestamp = DateTime.now().toIso8601String();
+      await messageRef.set({
+        'message': message,
+        'timestamp': timestamp,
+        'userId': userId,
+        'userName': userName ?? 'Anonymous',
+      });
+      print('Message sent successfully');
     } catch (e) {
       print('Error sending message: $e');
-      rethrow;
     }
   }
 
 
-  Stream<List<ChatMessage>> getMessages(String channelId) {
-    return _database
-        .child('channels/$channelId/messages')
-        .orderByChild('timestamp')
-        .onValue
-        .map((event) {
-      final messages = <ChatMessage>[];
-      final data = event.snapshot.value;
+  void getMessages(String channelId) {
+    DatabaseReference channelRef =
+    FirebaseDatabase.instance.ref('channels/$channelId/messages');
 
-      if (data != null && data is Map) {
-        final mapData = Map<String, dynamic>.from(data);
-        mapData.forEach((key, value) {
-          messages.add(ChatMessage.fromMap(Map<String, dynamic>.from(value)));
-        });
+    channelRef.onChildAdded.listen((event) {
+      if (event.snapshot.value != null) {
+        Map<String, dynamic> messageData =
+        Map<String, dynamic>.from(event.snapshot.value as Map);
+        print('New message in channel $channelId: $messageData');
       }
-
-      return messages;
     });
   }
 

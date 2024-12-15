@@ -6,8 +6,7 @@ class ManageSubscriptionsPage extends StatefulWidget {
   const ManageSubscriptionsPage({super.key});
 
   @override
-  _ManageSubscriptionsPageState createState() =>
-      _ManageSubscriptionsPageState();
+  _ManageSubscriptionsPageState createState() => _ManageSubscriptionsPageState();
 }
 
 class _ManageSubscriptionsPageState extends State<ManageSubscriptionsPage> {
@@ -42,7 +41,7 @@ class _ManageSubscriptionsPageState extends State<ManageSubscriptionsPage> {
   }
 
   void _unsubscribeFromChannel(String channelId) async {
-    await _firebaseService.removeSubscription(channelId);
+    await _firebaseService.unsubscribeFromChannelRealTimeDB(channelId);
     _loadUserSubscriptions();
   }
 
@@ -55,38 +54,38 @@ class _ManageSubscriptionsPageState extends State<ManageSubscriptionsPage> {
       body: _channels.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
-        itemCount: _channels.length,
-        itemBuilder: (context, index) {
-          final channel = _channels[index];
-          final isSubscribed = _userSubscriptions.contains(channel.id);
+              itemCount: _channels.length,
+              itemBuilder: (context, index) {
+                final channel = _channels[index];
+                final isSubscribed = _userSubscriptions.contains(channel.id);
 
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: ListTile(
-              title: Text(channel.name, style: const TextStyle(fontSize: 18)),
-              subtitle: Text(channel.description),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isSubscribed)
-                    ElevatedButton(
-                      onPressed: () => _unsubscribeFromChannel(channel.id),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                      ),
-                      child: const Text("Unsubscribe"),
-                    )
-                  else
-                    ElevatedButton(
-                      onPressed: () => _subscribeToChannel(channel.id),
-                      child: const Text("Subscribe"),
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  child: ListTile(
+                    title: Text(channel.name, style: TextStyle(fontSize: 18)),
+                    subtitle: Text(channel.description),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isSubscribed)
+                          ElevatedButton(
+                            onPressed: () => _unsubscribeFromChannel(channel.id),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                            ),
+                            child: const Text("Unsubscribe"),
+                          )
+                        else
+                          ElevatedButton(
+                            onPressed: () => _subscribeToChannel(channel.id),
+                            child: const Text("Subscribe"),
+                          ),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
