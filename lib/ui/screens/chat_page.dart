@@ -11,7 +11,7 @@ class ChatPage extends StatefulWidget {
   @override
   _ChatPageState createState() => _ChatPageState();
 }
-
+//explain
 class _ChatPageState extends State<ChatPage> {
   final FirebaseService _firebaseService = FirebaseService();
   final TextEditingController _controller = TextEditingController();
