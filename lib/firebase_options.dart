@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAFTH8WlPfCc2qvY0cBfWSO6ciXTmqiL7A',
-    appId: '1:596114579222:ios:658694c3d8f652c1a97a37',
+    appId: '1:596114579222:ios:658694c3d8f652c1a97a37',//jj
     messagingSenderId: '596114579222',
     projectId: 'cloudapplication-cebe5',
     storageBucket: 'cloudapplication-cebe5.firebasestorage.app',
