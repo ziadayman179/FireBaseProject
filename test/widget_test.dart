@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_core/firebase_core.dart'; // Add Firebase Core for initialization
 import 'package:untitled/main.dart';
-
+import 'package:untitled/firebase_options.dart';
 void main() {
   // Ensure Firebase is initialized before running tests
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp(); // Ensure Firebase is initialized
+    await Firebase.initializeApp(
+      name: 'lol',
+      options: DefaultFirebaseOptions.currentPlatform,
+    ); // Ensure Firebase is initialized
   });
 
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
