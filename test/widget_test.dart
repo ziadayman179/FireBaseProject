@@ -1,57 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mockito/mockito.dart';
 import 'package:untitled/main.dart';
-import 'package:untitled/firebase_options.dart';
+import 'package:untitled/ui/screens/auth.dart';
+import 'package:untitled/ui/screens/home_page.dart';
 
-// Mock Firebase initialization for testing
-abstract class MockFirebaseApp implements FirebaseApp {
+// Mock classes for Firebase services
+class MockUser extends Mock implements User {}
+
+class MockFirebaseAuth extends Mock implements FirebaseAuth {
+  final Stream<User?> _authStateStream;
+
+  MockFirebaseAuth(this._authStateStream);
+
   @override
-  String get name => 'testApp';
+  Stream<User?> authStateChanges() => _authStateStream;
 }
 
 void main() {
-  setUpAll(() async {
-    // Ensure Flutter binding is initialized
-    TestWidgetsFlutterBinding.ensureInitialized();
+  group('AuthStateWidget Tests', () {
+    testWidgets('Shows AuthenticationPage when user is not signed in', (WidgetTester tester) async {
+      // Mock FirebaseAuth to simulate user not being signed in
+      final mockFirebaseAuth = MockFirebaseAuth(Stream.value(null));
 
-    // Mock Firebase initialization
-    try {
-      await Firebase.initializeApp(
-        name: 'testApp',
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    } catch (e) {
-      print('Firebase initialization error in test: $e');
-
-      // Create a mock Firebase app if real initialization fails
-      await Firebase.initializeApp(
-        name: 'testApp',
-        options: FirebaseOptions(
-          apiKey: 'test-api-key',
-          appId: 'test-app-id',
-          messagingSenderId: 'test-messaging-sender-id',
-          projectId: 'test-project-id',
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AuthStateWidget(),
         ),
       );
-    }
+
+      expect(find.byType(AuthenticationPage), findsOneWidget);
+    });
+
+    testWidgets('Shows HomePage when user is signed in', (WidgetTester tester) async {
+      // Mock FirebaseAuth to simulate user signed in
+      final mockFirebaseAuth = MockFirebaseAuth(Stream.value(MockUser()));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AuthStateWidget(),
+        ),
+      );
+
+      expect(find.byType(HomePage), findsOneWidget);
+    });
+
+    testWidgets('Shows CircularProgressIndicator when checking auth state', (WidgetTester tester) async {
+      final mockFirebaseAuth = MockFirebaseAuth(Stream.empty());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AuthStateWidget(),
+        ),
+      );
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
   });
 
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build the app and trigger a frame
+  testWidgets('MyApp builds MaterialApp correctly', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify that our counter starts at 0
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.text('FCM Notification Demo'), findsOneWidget);
   });
 }
