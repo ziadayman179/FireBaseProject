@@ -25,9 +25,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-
       - name: Run tests
         run: flutter test
+        env:
+          NO_FIREBASE: true
+
       - name: Set up Firebase CLI
         run: |
           curl -sL https://firebase.tools | bash
@@ -38,8 +40,11 @@ jobs:
         env:
           FIREBASE_SECRET: ${{ secrets.FIREBASE_SECRET }}
 
+      - name: Build Android APK
+        run: flutter build apk --release
+
       - name: Deploy to Firebase App Distribution (Android)
         run: |
-          firebase appdistribution:distribute app-release.apk --app 1:255092478696:android:3b1d36cacb09f4da676f5d --groups ziadTesting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
+          firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk --app 1:255092478696:android:3b1d36cacb09f4da676f5d --groups ziadTesting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
         env:
-          FIREBASE_AUTH_TOKEN: ${{ secrets.FIREBASE_AUTH_TOKEN}}
+          FIREBASE_AUTH_TOKEN: ${{ secrets.FIREBASE_AUTH_TOKEN }}
