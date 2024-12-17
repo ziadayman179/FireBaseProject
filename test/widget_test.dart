@@ -1,33 +1,40 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:mockito/mockito.dart';
 import 'package:untitled/main.dart';
 import 'package:untitled/firebase_options.dart';
 
+// Mock Firebase initialization for testing
+abstract class MockFirebaseApp implements FirebaseApp {
+  @override
+  String get name => 'testApp';
+}
+
 void main() {
-  // Ensure proper Firebase initialization for testing
   setUpAll(() async {
     // Ensure Flutter binding is initialized
     TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Try to handle different platform scenarios
+    // Mock Firebase initialization
     try {
       await Firebase.initializeApp(
         name: 'testApp',
         options: DefaultFirebaseOptions.currentPlatform,
       );
     } catch (e) {
-      // If initialization fails, print the error for debugging
-      print('Firebase initialization error: $e');
+      print('Firebase initialization error in test: $e');
 
-      // For GitHub Actions (Linux), you might need to mock or skip Firebase init
-      // Alternatively, add a Linux configuration to firebase_options.dart
-      if (Platform.isLinux) {
-        print('Skipping Firebase initialization on Linux');
-        // You might want to mock Firebase services here
-      }
+      // Create a mock Firebase app if real initialization fails
+      await Firebase.initializeApp(
+        name: 'testApp',
+        options: FirebaseOptions(
+          apiKey: 'test-api-key',
+          appId: 'test-app-id',
+          messagingSenderId: 'test-messaging-sender-id',
+          projectId: 'test-project-id',
+        ),
+      );
     }
   });
 

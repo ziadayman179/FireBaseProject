@@ -23,12 +23,15 @@ jobs:
         run: flutter --version
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub add mockito
 
       - name: Run tests
-        run: flutter test
+        run: |
+          flutter test --coverage
         env:
-          NO_FIREBASE: true
+          FLUTTER_TEST: true
 
       - name: Set up Firebase CLI
         run: |
