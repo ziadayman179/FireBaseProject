@@ -37,6 +37,6 @@ jobs:
 
       - name: Deploy to Firebase App Distribution (Android)
         run: |
-          firebase appdistribution:distribute build/app/outputs/flutter-apk/app-debug.apk --app 1:255092478696:android:3b1d36cacb09f4da676f5d --groups ziadTesting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
+          firebase appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk --app 1:255092478696:android:3b1d36cacb09f4da676f5d --groups ziadTesting --token ${{ secrets.FIREBASE_AUTH_TOKEN }}
         env:
           FIREBASE_AUTH_TOKEN: ${{ secrets.FIREBASE_AUTH_TOKEN}}
