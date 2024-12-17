@@ -289,6 +289,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     TextField(
+                      key:const Key('nameField'),
                       controller: _nameController,
                       decoration: InputDecoration(
                         labelText: 'Name',
@@ -297,6 +298,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                     ),
                     SizedBox(height: 10),
                     TextField(
+                      key: const Key('emailField'),
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: 'Email',
@@ -306,6 +308,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                     ),
                     SizedBox(height: 10),
                     TextField(
+                      key:const  Key('passwordField'),
                       controller: _passwordController,
                       decoration: InputDecoration(
                         labelText: 'Password',
@@ -318,6 +321,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                       children: [
                         Expanded(
                           child: ElevatedButton(
+                            key:const Key('signUpButton'),
                             onPressed: _signUpWithEmail,
                             child: Text('Sign Up'),
                           ),
@@ -325,6 +329,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                         SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton(
+                            key:const Key('signInButton'),
                             onPressed: _signInWithEmail,
                             child: Text('Sign In'),
                           ),
@@ -333,6 +338,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                     ),
                     SizedBox(height: 20),
                     TextField(
+                      key:const Key('phoneField'),
                       controller: _phoneController,
                       decoration: InputDecoration(
                         labelText: 'Phone Number (e.g., +1XXXXXXXXXX)',
@@ -341,11 +347,13 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
                       keyboardType: TextInputType.phone,
                     ),
                     ElevatedButton(
+                      key:const Key('verifyPhoneButton'),
                       onPressed: _verifyPhoneNumber,
                       child: Text('Verify Phone Number'),
                     ),
                     SizedBox(height: 20),
                     ElevatedButton.icon(
+                      key:const Key('googleSignInButton'),
                       icon: Icon(Icons.g_translate),
                       label: Text('Sign In with Google'),
                       onPressed: _signInWithGoogle,
