@@ -9,4 +9,8 @@ cloud_firestore: ^5.5.1
 Then running the pub get command 
 Then importing the libraries in the code
 Before all of that downloading the firebase cli
-
+same thing for authenntaction but adding the following depndcies and anayltics
+  google_sign_in: ^6.2.2
+  flutter_facebook_auth: ^7.1.1
+  intl_phone_field: ^3.2.0
+  firebase_analytics: ^11.3.6
